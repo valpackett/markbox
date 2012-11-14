@@ -71,22 +71,7 @@ class Markbox(object):
             if not content:
                 d = self.dropbox_connect()
                 try:
-                    files = d.search("/", ".md")
-                    posts = []
-                    for f in files:
-                        cont = self.dropbox_file(d, f["path"])
-                        mdown = self.markdown()
-                        mdown.convert(cont)
-                        if "title" in mdown.Meta and "date" in mdown.Meta:
-                            posts.append({
-                                "path": f["path"][:-3],
-                                "title": mdown.Meta["title"][0],
-                                "date": self.cal.parse(mdown.Meta["date"][0])
-                            })
-                        else:
-                            print "No title and/or date in file: " + f["path"]
-                    posts = sorted(posts, key=lambda p: p["date"])
-                    posts.reverse()
+                    posts = self.dropbox_listing(d)
                     content = tpl_list.render(posts=posts)
                     self.cache.set("index", content)
                 except dropbox.rest.ErrorResponse, e:
@@ -99,8 +84,28 @@ class Markbox(object):
             return tpl_404.render(page_title="Page not found")
 
     def markdown(self):
-        return markdown.Markdown(extensions=["meta", "codehilite",
-            "headerid(level=2)", "footnotes", "tables", "sane_lists"])
+        return markdown.Markdown(extensions=["meta", "extra",
+            "codehilite", "headerid(level=2)", "sane_lists",
+            "smartypants"])
+
+    def dropbox_listing(self, d):
+        files = d.search("/", ".md")
+        posts = []
+        for f in files:
+            cont = self.dropbox_file(d, f["path"])
+            mdown = self.markdown()
+            mdown.convert(cont)
+            if "title" in mdown.Meta and "date" in mdown.Meta:
+                posts.append({
+                    "path": f["path"][:-3],
+                    "title": mdown.Meta["title"][0],
+                    "date": self.cal.parse(mdown.Meta["date"][0])
+                })
+            else:
+                print "No title and/or date in file: " + f["path"]
+        posts = sorted(posts, key=lambda p: p["date"])
+        posts.reverse()
+        return posts
 
     def dropbox_file(self, d, fname):
         r = d.get_file(fname)
