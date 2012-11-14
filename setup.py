@@ -15,7 +15,7 @@ setup(name="markbox",
       url="https://github.com/myfreeweb/markbox",
       requires=["pylibmc", "mockcache", "Jinja2", "dropbox", "markdown",
           "pygments", "bottle", "parsedatetime", "mdx_smartypants", "pyatom"],
-      packages=["markbox"],
+      py_modules=["markbox"],
       keywords=["web", "http", "dropbox", "markdown", "blog"],
       classifiers=[
         "Environment :: Web Environment",
