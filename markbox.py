@@ -15,13 +15,16 @@ from pyatom import AtomFeed
 from time import mktime
 from datetime import datetime
 
+here = lambda a: os.path.join(os.path.dirname(__file__), a)
+
 class Markbox(object):
     def __init__(self, public_folder="public", tpl_folder="templates",
             blog_title="Your New Markbox Blog", feed_name="articles",
             feed_author="Anonymous"):
         self.app = Bottle()
         self.cal = Calendar()
-        self.tpl = Environment(loader=FileSystemLoader(tpl_folder))
+        self.tpl = Environment(loader=FileSystemLoader([tpl_folder,
+            here("templates")]))
         self.tpl.globals["blog_title"] = blog_title
         self.tpl.globals["feed_name"] = feed_name
 
