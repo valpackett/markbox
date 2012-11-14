@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import sys
-from distutils.core import setup
+from setuptools import setup
 
 if sys.version < "2.5":
     sys.exit("Python 2.5 or higher is required")
@@ -13,7 +13,7 @@ setup(name="markbox",
       author="myfreeweb",
       author_email="floatboth@me.com",
       url="https://github.com/myfreeweb/markbox",
-      requires=["pylibmc", "mockcache", "Jinja2", "dropbox", "markdown",
+      install_requires=["pylibmc", "mockcache", "Jinja2", "dropbox", "markdown",
           "pygments", "bottle", "parsedatetime", "mdx_smartypants", "pyatom"],
       py_modules=["markbox"],
       keywords=["web", "http", "dropbox", "markdown", "blog"],
