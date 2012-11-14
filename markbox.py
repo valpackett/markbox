@@ -1,0 +1,138 @@
+#!/usr/bin/env python
+# Markbox - a blogging engine for Dropbox based on Markdown
+# by Greg V <floatboth@me.com> http://floatboth.com
+
+version_info = (0, 1, 0)
+__version__ = ".".join(map(str, version_info))
+
+import os
+import dropbox
+import markdown
+from parsedatetime.parsedatetime import Calendar
+from bottle import Bottle, request, redirect, static_file, abort
+from jinja2 import Environment, FileSystemLoader
+
+class Markbox(object):
+    def __init__(self, public_folder="public", tpl_folder="templates",
+            blog_title="Your New Markbox Blog"):
+        self.app = Bottle()
+        self.cal = Calendar()
+        self.tpl = Environment(loader=FileSystemLoader(tpl_folder))
+        self.tpl.globals["blog_title"] = blog_title
+
+        if "MEMCACHE_SERVERS" in os.environ:
+            import pylibmc
+            self.cache = pylibmc.Client(
+                servers=[os.environ.get("MEMCACHE_SERVERS")],
+                username=os.environ.get("MEMCACHE_USERNAME"),
+                password=os.environ.get("MEMCACHE_PASSWORD"),
+                binary=True)
+        else:
+            import mockcache
+            self.cache = mockcache.Client()
+
+        if "DROPBOX_APP_KEY" in os.environ and \
+                "DROPBOX_APP_SECRET" in os.environ:
+            self.db_app_key = os.environ.get("DROPBOX_APP_KEY")
+            self.db_app_secret = os.environ.get("DROPBOX_APP_SECRET")
+        else:
+            print "Dropbox credentials not found in the env."
+            print "Set DROPBOX_APP_KEY and DROPBOX_APP_SECRET env variables!"
+
+        @self.app.route("/public/<filename>")
+        def static(filename):
+            return static_file(filename, root=public_folder)
+
+        tpl_post = self.tpl.get_template("post.html")
+        @self.app.route("/<title>")
+        def post(title):
+            content = self.cache.get(title)
+            if not content:
+                d = self.dropbox_connect()
+                try:
+                    src = self.dropbox_file(d, title + ".md")
+                    mdown = self.markdown()
+                    html = mdown.convert(src)
+                    content = tpl_post.render(body=html,
+                            page_title=mdown.Meta["title"][0],
+                            date=mdown.Meta["date"][0])
+                    self.cache.set(title, content)
+                except dropbox.rest.ErrorResponse, e:
+                    if e.status == 404:
+                        abort(404, "File not found")
+                    else:
+                        return self.dropbox_error(e)
+            return content
+
+        tpl_list = self.tpl.get_template("list.html")
+        @self.app.route("/")
+        def listing():
+            content = self.cache.get("index")
+            if not content:
+                d = self.dropbox_connect()
+                try:
+                    files = d.search("/", ".md")
+                    posts = []
+                    for f in files:
+                        cont = self.dropbox_file(d, f["path"])
+                        mdown = self.markdown()
+                        mdown.convert(cont)
+                        if "title" in mdown.Meta and "date" in mdown.Meta:
+                            posts.append({
+                                "path": f["path"][:-3],
+                                "title": mdown.Meta["title"][0],
+                                "date": self.cal.parse(mdown.Meta["date"][0])
+                            })
+                        else:
+                            print "No title and/or date in file: " + f["path"]
+                    posts = sorted(posts, key=lambda p: p["date"])
+                    posts.reverse()
+                    content = tpl_list.render(posts=posts)
+                    self.cache.set("index", content)
+                except dropbox.rest.ErrorResponse, e:
+                    return self.dropbox_error(e)
+            return content
+
+        tpl_404 = self.tpl.get_template("404.html")
+        @self.app.error(404)
+        def handle_404(error):
+            return tpl_404.render(page_title="Page not found")
+
+    def markdown(self):
+        return markdown.Markdown(extensions=["meta", "codehilite",
+            "headerid(level=2)", "footnotes", "tables", "sane_lists"])
+
+    def dropbox_file(self, d, fname):
+        r = d.get_file(fname)
+        cont = r.read()
+        r.close()
+        return cont
+
+    def dropbox_connect(self):
+        sess = dropbox.session.DropboxSession(self.db_app_key,
+                self.db_app_secret, "app_folder")
+        s_token = self.cache.get("s_token")
+        s_token_secret = self.cache.get("s_token_secret")
+        if s_token and s_token_secret:
+            sess.set_token(s_token, s_token_secret)
+        elif request.query.oauth_token:
+            s_token = sess.obtain_access_token(dropbox.session.OAuthToken(\
+                self.cache.get("r_token"), self.cache.get("r_token_secret")))
+            self.cache.set("s_token", s_token.key)
+            self.cache.set("s_token_secret", s_token.secret)
+            self.cache.delete("r_token")
+            self.cache.delete("r_token_secret")
+        else:
+            req_token = sess.obtain_request_token()
+            self.cache.set("r_token", req_token.key)
+            self.cache.set("r_token_secret", req_token.secret)
+            callback = "http://" + request.headers.get("Host") + \
+                request.path
+            url = sess.build_authorize_url(req_token, callback)
+            redirect(url)  # throws an exception
+        return dropbox.client.DropboxClient(sess)
+
+    def dropbox_error(self, e):
+        import traceback
+        return "<!DOCTYPE html><pre>Dropbox error: " + \
+                traceback.format_exc(e) + "</pre>"
