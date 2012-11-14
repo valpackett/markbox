@@ -2,9 +2,6 @@
 # Markbox - a blogging engine for Dropbox based on Markdown
 # by Greg V <floatboth@me.com> http://floatboth.com
 
-version_info = (0, 1, 0)
-__version__ = ".".join(map(str, version_info))
-
 import os
 import dropbox
 import markdown

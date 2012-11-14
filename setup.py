@@ -7,7 +7,7 @@ if sys.version < "2.5":
     sys.exit("Python 2.5 or higher is required")
 
 setup(name="markbox",
-      version=__version__,
+      version="0.1.0",
       description="A blogging engine for Dropbox based on Markdown",
 #      long_description="""""",
       license="Apache License 2.0",
