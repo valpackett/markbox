@@ -144,11 +144,17 @@ class Markbox(object):
         r.close()
         return cont
 
+    def read_file(self, fname):
+        try:
+            return open(fname, "r").read()
+        except IOError:
+            return None
+
     def dropbox_connect(self):
         sess = dropbox.session.DropboxSession(self.db_app_key,
                 self.db_app_secret, "app_folder")
-        s_token = self.cache.get("s_token")
-        s_token_secret = self.cache.get("s_token_secret")
+        s_token = self.cache.get("s_token") or self.read_file(".s_token")
+        s_token_secret = self.cache.get("s_token_secret") or self.read_file(".s_token_secret")
         if s_token and s_token_secret:
             sess.set_token(s_token, s_token_secret)
         elif request.query.oauth_token:
@@ -156,6 +162,8 @@ class Markbox(object):
                 self.cache.get("r_token"), self.cache.get("r_token_secret")))
             self.cache.set("s_token", s_token.key)
             self.cache.set("s_token_secret", s_token.secret)
+            open(".s_token", "w").write(s_token.key)
+            open(".s_token_secret", "w").write(s_token.secret)
             self.cache.delete("r_token")
             self.cache.delete("r_token_secret")
         else:
