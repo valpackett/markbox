@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 import sys
 from distutils.core import setup
-from markbox import __version__
 
 if sys.version < "2.5":
     sys.exit("Python 2.5 or higher is required")
