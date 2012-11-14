@@ -9,16 +9,21 @@ import os
 import dropbox
 import markdown
 from parsedatetime.parsedatetime import Calendar
-from bottle import Bottle, request, redirect, static_file, abort
+from bottle import Bottle, request, response, redirect, static_file, abort
 from jinja2 import Environment, FileSystemLoader
+from pyatom import AtomFeed
+from time import mktime
+from datetime import datetime
 
 class Markbox(object):
     def __init__(self, public_folder="public", tpl_folder="templates",
-            blog_title="Your New Markbox Blog"):
+            blog_title="Your New Markbox Blog", feed_name="articles",
+            feed_author="Anonymous"):
         self.app = Bottle()
         self.cal = Calendar()
         self.tpl = Environment(loader=FileSystemLoader(tpl_folder))
         self.tpl.globals["blog_title"] = blog_title
+        self.tpl.globals["feed_name"] = feed_name
 
         if "MEMCACHE_SERVERS" in os.environ:
             import pylibmc
@@ -42,6 +47,31 @@ class Markbox(object):
         @self.app.route("/public/<filename>")
         def static(filename):
             return static_file(filename, root=public_folder)
+
+        @self.app.route("/"+feed_name+".xml")
+        def feed():
+            response.content_type = "application/atom+xml; charset=utf-8"
+            content = self.cache.get("feed")
+            if not content:
+                d = self.dropbox_connect()
+                try:
+                    posts = self.dropbox_listing(d)
+                    host = "http://"+request.headers.get("Host")
+                    atom = AtomFeed(title=blog_title, url=host,
+                            feed_url=host+"/"+feed_name+".xml",
+                            author=feed_author)
+                    for post in posts:
+                        atom.add(title=post["title"],
+                                url=host+post["path"],
+                                author=feed_author,
+                                content_type="html",
+                                content=post["html"],
+                                updated=post["date"])
+                    content = atom.to_string()
+                    self.cache.set("feed", content)
+                except dropbox.rest.ErrorResponse, e:
+                    return self.dropbox_error(e)
+            return content
 
         tpl_post = self.tpl.get_template("post.html")
         @self.app.route("/<title>")
@@ -94,12 +124,13 @@ class Markbox(object):
         for f in files:
             cont = self.dropbox_file(d, f["path"])
             mdown = self.markdown()
-            mdown.convert(cont)
+            html = mdown.convert(cont)
             if "title" in mdown.Meta and "date" in mdown.Meta:
                 posts.append({
                     "path": f["path"][:-3],
                     "title": mdown.Meta["title"][0],
-                    "date": self.cal.parse(mdown.Meta["date"][0])
+                    "date": datetime.fromtimestamp(mktime(self.cal.parse(mdown.Meta["date"][0])[0])),
+                    "html": html
                 })
             else:
                 print "No title and/or date in file: " + f["path"]
