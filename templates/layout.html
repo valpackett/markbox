@@ -3,22 +3,26 @@
   <head>
     <meta charset="utf-8">
     <meta content="width=device-width" name="viewport">
-    <title>{{page_title}} / {{blog_title}}</title>
+    <title>{% if page_title %}{{page_title}} / {% endif %}{{blog_title}}</title>
     <script src="http://use.edgefonts.net/source-sans-pro.js"></script>
     <style>
       /* http://www.colourlovers.com/palette/2528710/Bad_Front_End */
       html { background: #FFF7DE; color: #041D36; }
-      body { font-family: source-sans-pro, sans-serif; font-size: 1.00000em; line-height: 1.50000em; }
+      body { font-family: source-sans-pro, sans-serif; font-size: 1em; line-height: 1.5em; }
+      ::selection { background: #CC1010; color: #EFEFEF; }
+      ::-moz-selection { background: #CC1010; color: #EFEFEF; }
       a { color: #CC1010; }
       a:hover { color: #DD2020; }
       h1 a { text-decoration: none; }
       h1 { font-size: 3.18750em; line-height: 1.41176em; margin-top: 0.4706em; margin-bottom: 0.9412em; }
       h2 { font-size: 1.75000em; line-height: 1.71429em; margin-top: 1.7143em; margin-bottom: 0.8571em; }
-      h3 { font-size: 1.31250em; line-height: 1.14286em; margin-top: 1.1429em; margin-bottom: 0em; }
-      p, ul { margin-top: 0em; margin-bottom: 1.5em; }
+      h3 { font-size: 1.31250em; line-height: 1.14286em; margin-top: 1.1429em; margin-bottom: 0; }
+      p, ul, ol { margin-top: 0; margin-bottom: 1.5em; }
+      ul, ol { list-style-position: inside; padding-left: 0; }
       small, aside { font-size: 0.75000em; }
       @media screen and (min-width: 640px) {
         body { width: 80%; margin: 0 auto; }
+        ul, ol { list-style-position: outside; }
       }
       @media screen and (min-width: 1024px) {
         body { width: 60%; }
