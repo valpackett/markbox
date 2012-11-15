@@ -158,7 +158,6 @@ class Markbox(object):
 
     def run(self, host="0.0.0.0", port=8080):
         cherrypy.config.update({
-            "environment": "production",
             "server.socket_host": host,
             "server.socket_port": port
         })
