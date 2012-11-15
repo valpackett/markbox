@@ -177,7 +177,8 @@ class Markbox(object):
 
     def read_file(self, fname):
         try:
-            return open(fname, "r").read()
+            with open(fname, "r") as f:
+                return f.read()
         except IOError:
             return None
 
@@ -193,8 +194,10 @@ class Markbox(object):
                 self.cache.get("r_token"), self.cache.get("r_token_secret")))
             self.cache.set("s_token", s_token.key)
             self.cache.set("s_token_secret", s_token.secret)
-            open(".s_token", "w").write(s_token.key)
-            open(".s_token_secret", "w").write(s_token.secret)
+            with open(".s_token", "w") as f:
+                f.write(s_token.key)
+            with open(".s_token_secret", "w") as f:
+                f.write(s_token.secret)
             self.cache.delete("r_token")
             self.cache.delete("r_token_secret")
         else:
