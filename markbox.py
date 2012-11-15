@@ -23,6 +23,11 @@ def ctype(ct):
     return decorator
 
 
+def get_markdown():
+    return markdown.Markdown(extensions=["meta", "extra",
+        "codehilite", "headerid(level=2)", "sane_lists",
+        "smartypants"])
+
 class Cache(object):
     def __init__(self): pass # inject backend and uncache_key later
 
@@ -118,7 +123,7 @@ class Markbox(object):
         d = self.dropbox_connect(kwargs)
         try:
             src = self.dropbox_file(d, title + ".md")
-            mdown = self.markdown()
+            mdown = get_markdown()
             html = mdown.convert(src)
             tpl_post = self.tpl.get_template("post.html")
             content = tpl_post.render(body=html,
@@ -158,17 +163,12 @@ class Markbox(object):
             }
         })
 
-    def markdown(self):
-        return markdown.Markdown(extensions=["meta", "extra",
-            "codehilite", "headerid(level=2)", "sane_lists",
-            "smartypants"])
-
     def dropbox_listing(self, d):
         files = d.search("/", ".md")
         posts = []
         for f in files:
             cont = self.dropbox_file(d, f["path"])
-            mdown = self.markdown()
+            mdown = get_markdown()
             html = mdown.convert(cont)
             if "title" in mdown.Meta and "date" in mdown.Meta:
                 posts.append({
