@@ -6,21 +6,29 @@
     <title>{% if page_title %}{{page_title}} / {% endif %}{{blog_title}}</title>
     <link rel="alternate" type="application/atom+xml" href="/{{feed_name}}.xml">
     <script src="http://use.edgefonts.net/source-sans-pro.js"></script>
+    <script src="http://use.edgefonts.net/source-code-pro.js"></script>
     <style>
       /* http://www.colourlovers.com/palette/2528710/Bad_Front_End */
       html { background: #FFF7DE; color: #041D36; }
-      body { font-family: source-sans-pro, sans-serif; font-size: 1em; line-height: 1.5em; }
+      body { font-family: source-sans-pro, sans-serif; font-size: 1em; line-height: 1.5em; text-rendering: optimizeLegibility; }
       ::selection { background: #CC1010; color: #EFEFEF; }
       ::-moz-selection { background: #CC1010; color: #EFEFEF; }
       a { color: #CC1010; }
       a:hover { color: #DD2020; }
+      a:focus { outline: thin dotted; }
+      a:hover, a:active { outline: 0; }
+      abbr[title] { border-bottom: 1px dotted; }
+      pre, code, kbd, samp { font-family: source-code-pro, monospace; }
+      pre { white-space: pre; white-space: pre-wrap; word-wrap: break-word; margin: 0; }
       h1 a { text-decoration: none; }
       h1 { font-size: 3.18750em; line-height: 1.41176em; margin-top: 0.4706em; margin-bottom: 0.9412em; }
       h2 { font-size: 1.75000em; line-height: 1.71429em; margin-top: 1.7143em; margin-bottom: 0.8571em; }
       h3 { font-size: 1.31250em; line-height: 1.14286em; margin-top: 1.1429em; margin-bottom: 0; }
-      p, ul, ol { margin-top: 0; margin-bottom: 1.5em; }
+      p, ul, ol, .codehilite, blockquote { margin-top: 0; margin-bottom: 1.5em; }
       ul, ol { list-style-position: inside; padding-left: 0; }
+      ul { list-style: square; }
       small, aside { font-size: 0.75000em; }
+      blockquote { border-left: 4px solid #CACACA; margin-left: 0; padding-left: 1.5em; }
       @media screen and (min-width: 640px) {
         body { width: 80%; margin: 0 auto; }
         ul, ol { list-style-position: outside; }
@@ -28,6 +36,18 @@
       @media screen and (min-width: 1024px) {
         body { width: 60%; }
       }
+      .o, .ow, .gs, .kc, .kp, .kr, .ne, .nf, .nt { font-weight: bold; }
+      .c, .cm, .cp, .c1, .cs, .ge { font-style: italic; }
+      .err, .se { color: #dc322f; }
+      .p, .o, .ge, .gs { color: #93a1a1; }
+      .gh, .c, .cm, .cp, .c1, .cs { color: #586e75; }
+      .gu { color: #6c71c4; }
+      .k, .kp { color: #cb4b16; }
+      .kr, .nc { color: #d33682; }
+      .kc, .nb, .nl { color: #859900; }
+      .nn, .nx, .no { color: #b58900; }
+      .vg, .vi, .nv, .n, .na, .si, .kd, .ne, .nf, .nt { color: #268bd2; }
+      .ow, .kt, .mf, .m, .mh, .mi, .s, .sd, .s2, .sr, .s1 { color: #2aa198; }
     </style>
   </head>
   <body>
