@@ -40,13 +40,15 @@ class Cache(object):
     def cached(self, cachekey):
         def decorator(fn):
             def wrapper(*args, **kwargs):
+                ck = cachekey(args)
                 if "uncache_key" in kwargs and kwargs["uncache_key"] == self.uncache_key:
-                    self.backend.delete(cachekey(args))
+                    self.backend.delete(ck)
                     content = None
                 else:
-                    content = self.backend.get(cachekey(args))
+                    content = self.backend.get(ck)
                 if not content:
                     content = fn(*args, **kwargs)
+                self.backend.set(ck, content)
                 return content
             return wrapper
         return decorator
@@ -118,7 +120,6 @@ class Markbox(object):
                         content=post["html"],
                         updated=post["date"])
             content = atom.to_string()
-            self.cache.set("feed", content)
             return content
         except dropbox.rest.ErrorResponse, e:
             return self.dropbox_error(e)
@@ -135,7 +136,6 @@ class Markbox(object):
             content = tpl_post.render(body=html,
                     page_title=mdown.Meta["title"][0],
                     date=mdown.Meta["date"][0])
-            self.cache.set(title, content)
             return content
         except dropbox.rest.ErrorResponse, e:
             if e.status == 404:
@@ -151,7 +151,6 @@ class Markbox(object):
             posts = self.dropbox_listing(d)
             tpl_list = self.tpl.get_template("list.html")
             content = tpl_list.render(posts=posts)
-            self.cache.set("index", content)
             return content
         except dropbox.rest.ErrorResponse, e:
             return self.dropbox_error(e)
