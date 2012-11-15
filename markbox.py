@@ -119,8 +119,7 @@ class Markbox(object):
                         content_type="html",
                         content=post["html"],
                         updated=post["date"])
-            content = atom.to_string()
-            return content
+            return atom.to_string()
         except dropbox.rest.ErrorResponse, e:
             return self.dropbox_error(e)
 
@@ -133,10 +132,9 @@ class Markbox(object):
             mdown = get_markdown()
             html = mdown.convert(src)
             tpl_post = self.tpl.get_template("post.html")
-            content = tpl_post.render(body=html,
+            return tpl_post.render(body=html,
                     page_title=mdown.Meta["title"][0],
                     date=mdown.Meta["date"][0])
-            return content
         except dropbox.rest.ErrorResponse, e:
             if e.status == 404:
                 raise cherrypy.HTTPError(404, "File not found")
@@ -150,8 +148,7 @@ class Markbox(object):
         try:
             posts = self.dropbox_listing(d)
             tpl_list = self.tpl.get_template("list.html")
-            content = tpl_list.render(posts=posts)
-            return content
+            return tpl_list.render(posts=posts)
         except dropbox.rest.ErrorResponse, e:
             return self.dropbox_error(e)
 
