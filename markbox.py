@@ -91,13 +91,13 @@ class Markbox(object):
     @cherrypy.expose
     @ctype("application/atom+xml; charset=utf-8")
     @cache.cached(lambda a: "feed")
-    def _feed(self):
-        d = self.dropbox_connect()
+    def _feed(self, *args, **kwargs):
+        d = self.dropbox_connect(kwargs)
         try:
             posts = self.dropbox_listing(d)
-            host = "http://"+cherrypy.request.headers["Host"]
+            host = cherrypy.request.base
             atom = AtomFeed(title=self.blog_title, url=host,
-                    feed_url=host+"/"+self.feed_name+".xml",
+                    feed_url=cherrypy.url(),
                     author=self.feed_author)
             for post in posts:
                 atom.add(title=post["title"],
@@ -114,8 +114,8 @@ class Markbox(object):
 
     @cherrypy.expose
     @cache.cached(lambda a: a[1])  # title from (self, title)
-    def default(self, title):
-        d = self.dropbox_connect()
+    def default(self, title, **kwargs):
+        d = self.dropbox_connect(kwargs)
         try:
             src = self.dropbox_file(d, title + ".md")
             mdown = self.markdown()
@@ -134,8 +134,8 @@ class Markbox(object):
 
     @cherrypy.expose
     @cache.cached(lambda a: "index")
-    def index(self):
-        d = self.dropbox_connect()
+    def index(self, *args, **kwargs):
+        d = self.dropbox_connect(kwargs)
         try:
             posts = self.dropbox_listing(d)
             tpl_list = self.tpl.get_template("list.html")
@@ -147,6 +147,7 @@ class Markbox(object):
 
     def run(self, host="0.0.0.0", port=8080):
         cherrypy.config.update({
+            "environment": "production",
             "server.socket_host": host,
             "server.socket_port": port
         })
@@ -195,14 +196,14 @@ class Markbox(object):
         except IOError:
             return None
 
-    def dropbox_connect(self):
+    def dropbox_connect(self, query):
         sess = dropbox.session.DropboxSession(self.db_app_key,
                 self.db_app_secret, "app_folder")
         s_token = self.cache.get("s_token") or self.read_file(".s_token")
         s_token_secret = self.cache.get("s_token_secret") or self.read_file(".s_token_secret")
         if s_token and s_token_secret:
             sess.set_token(s_token, s_token_secret)
-        elif request.query.oauth_token:
+        elif "oauth_token" in query:
             s_token = sess.obtain_access_token(dropbox.session.OAuthToken(\
                 self.cache.get("r_token"), self.cache.get("r_token_secret")))
             self.cache.set("s_token", s_token.key)
@@ -217,9 +218,7 @@ class Markbox(object):
             req_token = sess.obtain_request_token()
             self.cache.set("r_token", req_token.key)
             self.cache.set("r_token_secret", req_token.secret)
-            callback = "http://" + cherrypy.request.headers["Host"] + \
-                request.path
-            url = sess.build_authorize_url(req_token, callback)
+            url = sess.build_authorize_url(req_token, cherrypy.url())
             raise cherrypy.HTTPRedirect(url)
         return dropbox.client.DropboxClient(sess)
 
