@@ -88,12 +88,12 @@ class Markbox(object):
             self.db_app_key = os.environ.get("DROPBOX_APP_KEY")
             self.db_app_secret = os.environ.get("DROPBOX_APP_SECRET")
         else:
-            print "Dropbox credentials not found in the env."
-            print "Set DROPBOX_APP_KEY and DROPBOX_APP_SECRET env variables!"
+            cherrypy.log("""Dropbox credentials not found in the env.
+            Set DROPBOX_APP_KEY and DROPBOX_APP_SECRET env variables!""")
 
         self.cache.uncache_key = os.environ.get("UNCACHE_KEY")
         if not self.cache.uncache_key:
-            print "Uncache key not found in the env."
+            cherrypy.log("Uncache key not found in the env.")
 
         def handle_404(status, message, traceback, version):
             tpl_404 = self.tpl.get_template("404.html")
@@ -179,7 +179,7 @@ class Markbox(object):
                     "html": html
                 })
             else:
-                print "No title and/or date in file: " + f["path"]
+                cherrypy.log("No title and/or date in file: " + f["path"])
         posts = sorted(posts, key=lambda p: p["date"])
         posts.reverse()
         return posts
