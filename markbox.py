@@ -30,16 +30,17 @@ def read_file(fname):
         return None
 
 def get_markdown():
-    return markdown.Markdown(extensions=["meta", "extra",
-        "codehilite", "headerid(level=2)", "sane_lists",
-        "smartypants"])
+    return markdown.Markdown(extensions=["meta", "extra", "codehilite",
+        "headerid(level=2)", "sane_lists", "smartypants"])
 
 class Cache(object):
+    "Wrapper around a memcache object with a decorator for caching handlers"
+
     def __init__(self): pass # inject backend and uncache_key later
 
     def cached(self, cachekey):
         def decorator(fn):
-            def wrapper(*args, **kwargs):
+            def wrapper(*args, **kwargs):  # kwargs is query string
                 ck = cachekey(args)
                 if "uncache_key" in kwargs and kwargs["uncache_key"] == self.uncache_key:
                     self.backend.delete(ck)
@@ -56,7 +57,6 @@ class Cache(object):
     def __getattr__(self, name):
         return getattr(self.backend, name)
 
-
 class Markbox(object):
     cache = Cache()
     cal = Calendar()
@@ -70,6 +70,8 @@ class Markbox(object):
         self.tpl.globals["feed_name"] = self.feed_name = feed_name
         self.public_folder = public_folder
         self.feed_author = feed_author
+
+        # CherryPy routes by method name, here we set the method name
         setattr(self, feed_name + "_xml", self._feed)
 
         if "MEMCACHE_SERVERS" in os.environ:
@@ -107,12 +109,11 @@ class Markbox(object):
     def _feed(self, *args, **kwargs):
         d = self.dropbox_connect(kwargs)
         try:
-            posts = self.dropbox_listing(d)
             host = cherrypy.request.base
             atom = AtomFeed(title=self.blog_title, url=host,
                     feed_url=cherrypy.url(),
                     author=self.feed_author)
-            for post in posts:
+            for post in self.dropbox_listing(d):
                 atom.add(title=post["title"],
                         url=host+post["path"],
                         author=self.feed_author,
@@ -146,9 +147,8 @@ class Markbox(object):
     def index(self, *args, **kwargs):
         d = self.dropbox_connect(kwargs)
         try:
-            posts = self.dropbox_listing(d)
             tpl_list = self.tpl.get_template("list.html")
-            return tpl_list.render(posts=posts)
+            return tpl_list.render(posts=self.dropbox_listing(d))
         except dropbox.rest.ErrorResponse, e:
             return self.dropbox_error(e)
 
@@ -173,8 +173,8 @@ class Markbox(object):
             html = mdown.convert(cont)
             if "title" in mdown.Meta and "date" in mdown.Meta:
                 posts.append({
-                    "path": f["path"][:-3],
-                    "title": mdown.Meta["title"][0],
+                    "path": f["path"][:-3],  # no extension, keep slash
+                    "title": mdown.Meta["title"][0],  # wrapped in a list
                     "date": datetime.fromtimestamp(mktime(self.cal.parse(mdown.Meta["date"][0])[0])),
                     "html": html
                 })
@@ -193,11 +193,12 @@ class Markbox(object):
     def dropbox_connect(self, query):
         sess = dropbox.session.DropboxSession(self.db_app_key,
                 self.db_app_secret, "app_folder")
+        # Access token is saved to memcache and the filesystem
         s_token = self.cache.get("s_token") or read_file(".s_token")
         s_token_secret = self.cache.get("s_token_secret") or read_file(".s_token_secret")
         if s_token and s_token_secret:
             sess.set_token(s_token, s_token_secret)
-        elif "oauth_token" in query:
+        elif "oauth_token" in query:  # callback from Dropbox
             s_token = sess.obtain_access_token(dropbox.session.OAuthToken(\
                 self.cache.get("r_token"), self.cache.get("r_token_secret")))
             self.cache.set("s_token", s_token.key)
@@ -208,7 +209,7 @@ class Markbox(object):
                 f.write(s_token.secret)
             self.cache.delete("r_token")
             self.cache.delete("r_token_secret")
-        else:
+        else:  # start of Dropbox auth
             req_token = sess.obtain_request_token()
             self.cache.set("r_token", req_token.key)
             self.cache.set("r_token_secret", req_token.secret)
