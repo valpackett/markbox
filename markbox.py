@@ -22,6 +22,12 @@ def ctype(ct):
         return wrapper
     return decorator
 
+def read_file(fname):
+    try:
+        with open(fname, "r") as f:
+            return f.read()
+    except IOError:
+        return None
 
 def get_markdown():
     return markdown.Markdown(extensions=["meta", "extra",
@@ -189,18 +195,11 @@ class Markbox(object):
         r.close()
         return cont
 
-    def read_file(self, fname):
-        try:
-            with open(fname, "r") as f:
-                return f.read()
-        except IOError:
-            return None
-
     def dropbox_connect(self, query):
         sess = dropbox.session.DropboxSession(self.db_app_key,
                 self.db_app_secret, "app_folder")
-        s_token = self.cache.get("s_token") or self.read_file(".s_token")
-        s_token_secret = self.cache.get("s_token_secret") or self.read_file(".s_token_secret")
+        s_token = self.cache.get("s_token") or read_file(".s_token")
+        s_token_secret = self.cache.get("s_token_secret") or read_file(".s_token_secret")
         if s_token and s_token_secret:
             sess.set_token(s_token, s_token_secret)
         elif "oauth_token" in query:
