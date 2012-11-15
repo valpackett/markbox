@@ -97,7 +97,7 @@ class Markbox(object):
             tpl_404 = self.tpl.get_template("404.html")
             return tpl_404.render(page_title="Page not found")
 
-        cherrypy.config.update({'error_page.404': handle_404})
+        cherrypy.config.update({"error_page.404": handle_404})
 
     @cherrypy.expose
     @ctype("application/atom+xml; charset=utf-8")
