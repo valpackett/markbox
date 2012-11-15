@@ -57,72 +57,87 @@ class Markbox(object):
                 return wrapper
             return decorator
 
+        def cached(cachekey):
+            def decorator(fn):
+                def wrapper(*args, **kwargs):
+                    content = self.cache.get(cachekey(kwargs))
+                    if not content:
+                        content = fn(*args, **kwargs)
+                    return content
+                return wrapper
+            return decorator
+
+        def ctype(ct):
+            def decorator(fn):
+                def wrapper(*args, **kwargs):
+                    response.content_type = ct
+                    return fn(*args, **kwargs)
+                return wrapper
+            return decorator
+
         @self.app.route("/public/<filename>")
         def static(filename):
             return static_file(filename, root=public_folder)
 
         @self.app.route("/"+feed_name+".xml")
+        @ctype("application/atom+xml; charset=utf-8")
         @uncacheable(lambda a: "feed")
+        @cached(lambda a: "feed")
         def feed():
-            response.content_type = "application/atom+xml; charset=utf-8"
-            content = self.cache.get("feed")
-            if not content:
-                d = self.dropbox_connect()
-                try:
-                    posts = self.dropbox_listing(d)
-                    host = "http://"+request.headers.get("Host")
-                    atom = AtomFeed(title=blog_title, url=host,
-                            feed_url=host+"/"+feed_name+".xml",
-                            author=feed_author)
-                    for post in posts:
-                        atom.add(title=post["title"],
-                                url=host+post["path"],
-                                author=feed_author,
-                                content_type="html",
-                                content=post["html"],
-                                updated=post["date"])
-                    content = atom.to_string()
-                    self.cache.set("feed", content)
-                except dropbox.rest.ErrorResponse, e:
-                    return self.dropbox_error(e)
-            return content
+            d = self.dropbox_connect()
+            try:
+                posts = self.dropbox_listing(d)
+                host = "http://"+request.headers.get("Host")
+                atom = AtomFeed(title=blog_title, url=host,
+                        feed_url=host+"/"+feed_name+".xml",
+                        author=feed_author)
+                for post in posts:
+                    atom.add(title=post["title"],
+                            url=host+post["path"],
+                            author=feed_author,
+                            content_type="html",
+                            content=post["html"],
+                            updated=post["date"])
+                content = atom.to_string()
+                self.cache.set("feed", content)
+                return content
+            except dropbox.rest.ErrorResponse, e:
+                return self.dropbox_error(e)
 
         tpl_post = self.tpl.get_template("post.html")
         @self.app.route("/<title>")
         @uncacheable(lambda a: a["title"])
+        @cached(lambda a: a["title"])
         def post(title):
-            content = self.cache.get(title)
-            if not content:
-                d = self.dropbox_connect()
-                try:
-                    src = self.dropbox_file(d, title + ".md")
-                    mdown = self.markdown()
-                    html = mdown.convert(src)
-                    content = tpl_post.render(body=html,
-                            page_title=mdown.Meta["title"][0],
-                            date=mdown.Meta["date"][0])
-                    self.cache.set(title, content)
-                except dropbox.rest.ErrorResponse, e:
-                    if e.status == 404:
-                        abort(404, "File not found")
-                    else:
-                        return self.dropbox_error(e)
-            return content
+            d = self.dropbox_connect()
+            try:
+                src = self.dropbox_file(d, title + ".md")
+                mdown = self.markdown()
+                html = mdown.convert(src)
+                content = tpl_post.render(body=html,
+                        page_title=mdown.Meta["title"][0],
+                        date=mdown.Meta["date"][0])
+                self.cache.set(title, content)
+                return content
+            except dropbox.rest.ErrorResponse, e:
+                if e.status == 404:
+                    abort(404, "File not found")
+                else:
+                    return self.dropbox_error(e)
 
         tpl_list = self.tpl.get_template("list.html")
         @self.app.route("/")
-        @uncacheable(lambda a: a["title"])
+        @uncacheable(lambda a: "index")
+        @cached(lambda a: "index")
         def listing():
-            content = self.cache.get("index")
-            if not content:
-                d = self.dropbox_connect()
-                try:
-                    posts = self.dropbox_listing(d)
-                    content = tpl_list.render(posts=posts)
-                    self.cache.set("index", content)
-                except dropbox.rest.ErrorResponse, e:
-                    return self.dropbox_error(e)
-            return content
+            d = self.dropbox_connect()
+            try:
+                posts = self.dropbox_listing(d)
+                content = tpl_list.render(posts=posts)
+                self.cache.set("index", content)
+                return content
+            except dropbox.rest.ErrorResponse, e:
+                return self.dropbox_error(e)
 
         tpl_404 = self.tpl.get_template("404.html")
         @self.app.error(404)
