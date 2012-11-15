@@ -44,11 +44,25 @@ class Markbox(object):
             print "Dropbox credentials not found in the env."
             print "Set DROPBOX_APP_KEY and DROPBOX_APP_SECRET env variables!"
 
+        uncache_key = os.environ.get("UNCACHE_KEY")
+        if not uncache_key:
+            print "Uncache key not found in the env."
+
+        def uncacheable(cachekey):
+            def decorator(fn):
+                def wrapper(*args, **kwargs):
+                    if uncache_key and request.query.uncache_key == uncache_key:
+                        self.cache.delete(cachekey(kwargs))
+                    return fn(*args, **kwargs)
+                return wrapper
+            return decorator
+
         @self.app.route("/public/<filename>")
         def static(filename):
             return static_file(filename, root=public_folder)
 
         @self.app.route("/"+feed_name+".xml")
+        @uncacheable(lambda a: "feed")
         def feed():
             response.content_type = "application/atom+xml; charset=utf-8"
             content = self.cache.get("feed")
@@ -75,6 +89,7 @@ class Markbox(object):
 
         tpl_post = self.tpl.get_template("post.html")
         @self.app.route("/<title>")
+        @uncacheable(lambda a: a["title"])
         def post(title):
             content = self.cache.get(title)
             if not content:
@@ -96,6 +111,7 @@ class Markbox(object):
 
         tpl_list = self.tpl.get_template("list.html")
         @self.app.route("/")
+        @uncacheable(lambda a: a["title"])
         def listing():
             content = self.cache.get("index")
             if not content:
