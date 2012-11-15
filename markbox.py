@@ -5,8 +5,8 @@
 import os
 import dropbox
 import markdown
+import cherrypy
 from parsedatetime.parsedatetime import Calendar
-from bottle import Bottle, request, response, redirect, static_file, abort
 from jinja2 import Environment, FileSystemLoader
 from pyatom import AtomFeed
 from time import mktime
@@ -14,27 +14,61 @@ from datetime import datetime
 
 here = lambda a: os.path.join(os.path.dirname(__file__), a)
 
+def ctype(ct):
+    def decorator(fn):
+        def wrapper(*args, **kwargs):
+            cherrypy.response.headers['Content-Type'] = ct
+            return fn(*args, **kwargs)
+        return wrapper
+    return decorator
+
+
+class Cache(object):
+    def __init__(self): pass # inject backend and uncache_key later
+
+    def cached(self, cachekey):
+        def decorator(fn):
+            def wrapper(*args, **kwargs):
+                if "uncache_key" in kwargs and kwargs["uncache_key"] == self.uncache_key:
+                    self.backend.delete(cachekey(args))
+                    content = None
+                else:
+                    content = self.backend.get(cachekey(args))
+                if not content:
+                    content = fn(*args, **kwargs)
+                return content
+            return wrapper
+        return decorator
+
+    def __getattr__(self, name):
+        return getattr(self.backend, name)
+
+
 class Markbox(object):
+    cache = Cache()
+    cal = Calendar()
+
     def __init__(self, public_folder="public", tpl_folder="templates",
             blog_title="Your New Markbox Blog", feed_name="articles",
             feed_author="Anonymous"):
-        self.app = Bottle()
-        self.cal = Calendar()
         self.tpl = Environment(loader=FileSystemLoader([tpl_folder,
             here("templates")]))
-        self.tpl.globals["blog_title"] = blog_title
-        self.tpl.globals["feed_name"] = feed_name
+        self.tpl.globals["blog_title"] = self.blog_title = blog_title
+        self.tpl.globals["feed_name"] = self.feed_name = feed_name
+        self.public_folder = public_folder
+        self.feed_author = feed_author
+        setattr(self, feed_name + "_xml", self._feed)
 
         if "MEMCACHE_SERVERS" in os.environ:
             import pylibmc
-            self.cache = pylibmc.Client(
+            self.cache.backend = pylibmc.Client(
                 servers=[os.environ.get("MEMCACHE_SERVERS")],
                 username=os.environ.get("MEMCACHE_USERNAME"),
                 password=os.environ.get("MEMCACHE_PASSWORD"),
                 binary=True)
         else:
             import mockcache
-            self.cache = mockcache.Client()
+            self.cache.backend = mockcache.Client()
 
         if "DROPBOX_APP_KEY" in os.environ and \
                 "DROPBOX_APP_SECRET" in os.environ:
@@ -44,105 +78,85 @@ class Markbox(object):
             print "Dropbox credentials not found in the env."
             print "Set DROPBOX_APP_KEY and DROPBOX_APP_SECRET env variables!"
 
-        uncache_key = os.environ.get("UNCACHE_KEY")
-        if not uncache_key:
+        self.cache.uncache_key = os.environ.get("UNCACHE_KEY")
+        if not self.cache.uncache_key:
             print "Uncache key not found in the env."
 
-        def uncacheable(cachekey):
-            def decorator(fn):
-                def wrapper(*args, **kwargs):
-                    if uncache_key and request.query.uncache_key == uncache_key:
-                        self.cache.delete(cachekey(kwargs))
-                    return fn(*args, **kwargs)
-                return wrapper
-            return decorator
-
-        def cached(cachekey):
-            def decorator(fn):
-                def wrapper(*args, **kwargs):
-                    content = self.cache.get(cachekey(kwargs))
-                    if not content:
-                        content = fn(*args, **kwargs)
-                    return content
-                return wrapper
-            return decorator
-
-        def ctype(ct):
-            def decorator(fn):
-                def wrapper(*args, **kwargs):
-                    response.content_type = ct
-                    return fn(*args, **kwargs)
-                return wrapper
-            return decorator
-
-        @self.app.route("/public/<filename>")
-        def static(filename):
-            return static_file(filename, root=public_folder)
-
-        @self.app.route("/"+feed_name+".xml")
-        @ctype("application/atom+xml; charset=utf-8")
-        @uncacheable(lambda a: "feed")
-        @cached(lambda a: "feed")
-        def feed():
-            d = self.dropbox_connect()
-            try:
-                posts = self.dropbox_listing(d)
-                host = "http://"+request.headers.get("Host")
-                atom = AtomFeed(title=blog_title, url=host,
-                        feed_url=host+"/"+feed_name+".xml",
-                        author=feed_author)
-                for post in posts:
-                    atom.add(title=post["title"],
-                            url=host+post["path"],
-                            author=feed_author,
-                            content_type="html",
-                            content=post["html"],
-                            updated=post["date"])
-                content = atom.to_string()
-                self.cache.set("feed", content)
-                return content
-            except dropbox.rest.ErrorResponse, e:
-                return self.dropbox_error(e)
-
-        tpl_post = self.tpl.get_template("post.html")
-        @self.app.route("/<title>")
-        @uncacheable(lambda a: a["title"])
-        @cached(lambda a: a["title"])
-        def post(title):
-            d = self.dropbox_connect()
-            try:
-                src = self.dropbox_file(d, title + ".md")
-                mdown = self.markdown()
-                html = mdown.convert(src)
-                content = tpl_post.render(body=html,
-                        page_title=mdown.Meta["title"][0],
-                        date=mdown.Meta["date"][0])
-                self.cache.set(title, content)
-                return content
-            except dropbox.rest.ErrorResponse, e:
-                if e.status == 404:
-                    abort(404, "File not found")
-                else:
-                    return self.dropbox_error(e)
-
-        tpl_list = self.tpl.get_template("list.html")
-        @self.app.route("/")
-        @uncacheable(lambda a: "index")
-        @cached(lambda a: "index")
-        def listing():
-            d = self.dropbox_connect()
-            try:
-                posts = self.dropbox_listing(d)
-                content = tpl_list.render(posts=posts)
-                self.cache.set("index", content)
-                return content
-            except dropbox.rest.ErrorResponse, e:
-                return self.dropbox_error(e)
-
-        tpl_404 = self.tpl.get_template("404.html")
-        @self.app.error(404)
-        def handle_404(error):
+        def handle_404(status, message, traceback, version):
+            tpl_404 = self.tpl.get_template("404.html")
             return tpl_404.render(page_title="Page not found")
+
+        cherrypy.config.update({'error_page.404': handle_404})
+
+    @cherrypy.expose
+    @ctype("application/atom+xml; charset=utf-8")
+    @cache.cached(lambda a: "feed")
+    def _feed(self):
+        d = self.dropbox_connect()
+        try:
+            posts = self.dropbox_listing(d)
+            host = "http://"+cherrypy.request.headers["Host"]
+            atom = AtomFeed(title=self.blog_title, url=host,
+                    feed_url=host+"/"+self.feed_name+".xml",
+                    author=self.feed_author)
+            for post in posts:
+                atom.add(title=post["title"],
+                        url=host+post["path"],
+                        author=self.feed_author,
+                        content_type="html",
+                        content=post["html"],
+                        updated=post["date"])
+            content = atom.to_string()
+            self.cache.set("feed", content)
+            return content
+        except dropbox.rest.ErrorResponse, e:
+            return self.dropbox_error(e)
+
+    @cherrypy.expose
+    @cache.cached(lambda a: a[1])  # title from (self, title)
+    def default(self, title):
+        d = self.dropbox_connect()
+        try:
+            src = self.dropbox_file(d, title + ".md")
+            mdown = self.markdown()
+            html = mdown.convert(src)
+            tpl_post = self.tpl.get_template("post.html")
+            content = tpl_post.render(body=html,
+                    page_title=mdown.Meta["title"][0],
+                    date=mdown.Meta["date"][0])
+            self.cache.set(title, content)
+            return content
+        except dropbox.rest.ErrorResponse, e:
+            if e.status == 404:
+                raise cherrypy.HTTPError(404, "File not found")
+            else:
+                return self.dropbox_error(e)
+
+    @cherrypy.expose
+    @cache.cached(lambda a: "index")
+    def index(self):
+        d = self.dropbox_connect()
+        try:
+            posts = self.dropbox_listing(d)
+            tpl_list = self.tpl.get_template("list.html")
+            content = tpl_list.render(posts=posts)
+            self.cache.set("index", content)
+            return content
+        except dropbox.rest.ErrorResponse, e:
+            return self.dropbox_error(e)
+
+    def run(self, host="0.0.0.0", port=8080):
+        cherrypy.config.update({
+            "environment": "production",
+            "server.socket_host": host,
+            "server.socket_port": port
+        })
+        cherrypy.quickstart(self, "/", {
+            "/"+os.path.basename(self.public_folder): {
+                "tools.staticdir.on": True,
+                "tools.staticdir.dir": self.public_folder
+            }
+        })
 
     def markdown(self):
         return markdown.Markdown(extensions=["meta", "extra",
@@ -204,10 +218,10 @@ class Markbox(object):
             req_token = sess.obtain_request_token()
             self.cache.set("r_token", req_token.key)
             self.cache.set("r_token_secret", req_token.secret)
-            callback = "http://" + request.headers.get("Host") + \
+            callback = "http://" + cherrypy.request.headers["Host"] + \
                 request.path
             url = sess.build_authorize_url(req_token, callback)
-            redirect(url)  # throws an exception
+            raise cherrypy.HTTPRedirect(url)
         return dropbox.client.DropboxClient(sess)
 
     def dropbox_error(self, e):
