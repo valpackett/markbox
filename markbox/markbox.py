@@ -1,7 +1,6 @@
 from __future__ import absolute_import
 import os
 import markdown
-import dropbox
 import cherrypy
 from jinja2 import Environment, FileSystemLoader
 from pyatom import AtomFeed
@@ -35,7 +34,7 @@ class Markbox(object):
             blog_title="Your New Markbox Blog", feed_name="articles",
             feed_author="Anonymous"):
         self.tpl = Environment(loader=FileSystemLoader([tpl_folder,
-            here("templates")]))
+            here("../templates")]))
         self.tpl.globals["blog_title"] = self.blog_title = blog_title
         self.tpl.globals["feed_name"] = self.feed_name = feed_name
         self.public_folder = public_folder
