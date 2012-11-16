@@ -59,7 +59,6 @@ class Cache(object):
 
 class Markbox(object):
     cache = Cache()
-    cal = Calendar()
 
     def __init__(self, public_folder="public", tpl_folder="templates",
             blog_title="Your New Markbox Blog", feed_name="articles",
@@ -87,11 +86,12 @@ class Markbox(object):
 
         if "DROPBOX_APP_KEY" in os.environ and \
                 "DROPBOX_APP_SECRET" in os.environ:
-            self.db_app_key = os.environ.get("DROPBOX_APP_KEY")
-            self.db_app_secret = os.environ.get("DROPBOX_APP_SECRET")
+            db_app_key = os.environ.get("DROPBOX_APP_KEY")
+            db_app_secret = os.environ.get("DROPBOX_APP_SECRET")
         else:
             cherrypy.log("""Dropbox credentials not found in the env.
             Set DROPBOX_APP_KEY and DROPBOX_APP_SECRET env variables!""")
+        self.dropbox = Dropbox(db_app_key, db_app_secret, self.cache)
 
         self.cache.uncache_key = os.environ.get("UNCACHE_KEY")
         if not self.cache.uncache_key:
@@ -107,13 +107,13 @@ class Markbox(object):
     @ctype("application/atom+xml; charset=utf-8")
     @cache.cached(lambda a: "feed")
     def _feed(self, *args, **kwargs):
-        d = self.dropbox_connect(kwargs)
+        self.dropbox.connect(kwargs)
         try:
             host = cherrypy.request.base
             atom = AtomFeed(title=self.blog_title, url=host,
                     feed_url=cherrypy.url(),
                     author=self.feed_author)
-            for post in self.dropbox_listing(d):
+            for post in self.dropbox.listing():
                 atom.add(title=post["title"],
                         url=host+post["path"],
                         author=self.feed_author,
@@ -127,9 +127,9 @@ class Markbox(object):
     @cherrypy.expose
     @cache.cached(lambda a: a[1])  # title from (self, title)
     def default(self, title, **kwargs):
-        d = self.dropbox_connect(kwargs)
+        self.dropbox.connect(kwargs)
         try:
-            src = self.dropbox_file(d, title + ".md")
+            src = self.dropbox.read_file(title + ".md")
             mdown = get_markdown()
             html = mdown.convert(src)
             tpl_post = self.tpl.get_template("post.html")
@@ -145,10 +145,10 @@ class Markbox(object):
     @cherrypy.expose
     @cache.cached(lambda a: "index")
     def index(self, *args, **kwargs):
-        d = self.dropbox_connect(kwargs)
+        self.dropbox.connect(kwargs)
         try:
             tpl_list = self.tpl.get_template("list.html")
-            return tpl_list.render(posts=self.dropbox_listing(d))
+            return tpl_list.render(posts=self.dropbox.listing())
         except dropbox.rest.ErrorResponse, e:
             return self.dropbox_error(e)
 
@@ -164,11 +164,25 @@ class Markbox(object):
             }
         })
 
-    def dropbox_listing(self, d):
-        files = d.search("/", ".md")
+    def dropbox_error(self, e):
+        import traceback
+        return "<!DOCTYPE html><pre>Dropbox error: " + \
+                traceback.format_exc(e) + "</pre>"
+
+class Dropbox(object):
+    cal = Calendar()
+
+    def __init__(self, app_key, app_secret, cache):
+        self.app_key = app_key
+        self.app_secret = app_secret
+        self.cache = cache
+        self.client = None
+
+    def listing(self):
+        files = self.client.search("/", ".md")
         posts = []
         for f in files:
-            cont = self.dropbox_file(d, f["path"])
+            cont = self.read_file(f["path"])
             mdown = get_markdown()
             html = mdown.convert(cont)
             if "title" in mdown.Meta and "date" in mdown.Meta:
@@ -184,40 +198,36 @@ class Markbox(object):
         posts.reverse()
         return posts
 
-    def dropbox_file(self, d, fname):
-        r = d.get_file(fname)
+    def read_file(self, fname):
+        r = self.client.get_file(fname)
         cont = r.read()
         r.close()
         return cont
 
-    def dropbox_connect(self, query):
-        sess = dropbox.session.DropboxSession(self.db_app_key,
-                self.db_app_secret, "app_folder")
-        # Access token is saved to memcache and the filesystem
-        s_token = self.cache.get("s_token") or read_file(".s_token")
-        s_token_secret = self.cache.get("s_token_secret") or read_file(".s_token_secret")
-        if s_token and s_token_secret:
-            sess.set_token(s_token, s_token_secret)
-        elif "oauth_token" in query:  # callback from Dropbox
-            s_token = sess.obtain_access_token(dropbox.session.OAuthToken(\
-                self.cache.get("r_token"), self.cache.get("r_token_secret")))
-            self.cache.set("s_token", s_token.key)
-            self.cache.set("s_token_secret", s_token.secret)
-            with open(".s_token", "w") as f:
-                f.write(s_token.key)
-            with open(".s_token_secret", "w") as f:
-                f.write(s_token.secret)
-            self.cache.delete("r_token")
-            self.cache.delete("r_token_secret")
-        else:  # start of Dropbox auth
-            req_token = sess.obtain_request_token()
-            self.cache.set("r_token", req_token.key)
-            self.cache.set("r_token_secret", req_token.secret)
-            url = sess.build_authorize_url(req_token, cherrypy.url())
-            raise cherrypy.HTTPRedirect(url)
-        return dropbox.client.DropboxClient(sess)
-
-    def dropbox_error(self, e):
-        import traceback
-        return "<!DOCTYPE html><pre>Dropbox error: " + \
-                traceback.format_exc(e) + "</pre>"
+    def connect(self, query):
+        if not self.client:
+            sess = dropbox.session.DropboxSession(self.app_key,
+                    self.app_secret, "app_folder")
+            # Access token is saved to memcache and the filesystem
+            s_token = self.cache.get("s_token") or read_file(".s_token")
+            s_token_secret = self.cache.get("s_token_secret") or read_file(".s_token_secret")
+            if s_token and s_token_secret:
+                sess.set_token(s_token, s_token_secret)
+            elif "oauth_token" in query:  # callback from Dropbox
+                s_token = sess.obtain_access_token(dropbox.session.OAuthToken(\
+                    self.cache.get("r_token"), self.cache.get("r_token_secret")))
+                self.cache.set("s_token", s_token.key)
+                self.cache.set("s_token_secret", s_token.secret)
+                with open(".s_token", "w") as f:
+                    f.write(s_token.key)
+                with open(".s_token_secret", "w") as f:
+                    f.write(s_token.secret)
+                self.cache.delete("r_token")
+                self.cache.delete("r_token_secret")
+            else:  # start of Dropbox auth
+                req_token = sess.obtain_request_token()
+                self.cache.set("r_token", req_token.key)
+                self.cache.set("r_token_secret", req_token.secret)
+                url = sess.build_authorize_url(req_token, cherrypy.url())
+                raise cherrypy.HTTPRedirect(url)
+            self.client = dropbox.client.DropboxClient(sess)
