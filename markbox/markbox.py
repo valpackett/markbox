@@ -10,6 +10,7 @@ from .dropbox import Dropbox
 
 here = lambda a: os.path.join(os.path.dirname(__file__), a)
 
+
 def ctype(ct):
     def decorator(fn):
         def wrapper(*args, **kwargs):
@@ -18,9 +19,13 @@ def ctype(ct):
         return wrapper
     return decorator
 
+
 def get_markdown():
-    return markdown.Markdown(extensions=["meta", "extra", "codehilite",
-        "headerid(level=2)", "sane_lists", "smartypants"])
+    return markdown.Markdown(extensions=[
+        "meta", "extra", "codehilite", "headerid(level=2)",
+        "sane_lists", "smartypants"
+    ])
+
 
 class Markbox(object):
     cache = Cache()
@@ -81,7 +86,7 @@ class Markbox(object):
                 author=self.feed_author)
         for post in self.dropbox.listing():
             atom.add(title=post["title"],
-                    url=host+post["path"],
+                    url=host + post["path"],
                     author=self.feed_author,
                     content_type="html",
                     content=post["html"],
@@ -113,7 +118,7 @@ class Markbox(object):
             "server.socket_port": port
         })
         cherrypy.quickstart(self, "/", {
-            "/"+os.path.basename(self.public_folder): {
+            "/" + os.path.basename(self.public_folder): {
                 "tools.staticdir.on": True,
                 "tools.staticdir.dir": self.public_folder
             }

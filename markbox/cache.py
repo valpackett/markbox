@@ -1,15 +1,18 @@
 from __future__ import absolute_import
 
+
 class Cache(object):
     "Wrapper around a memcache object with a decorator for caching handlers"
 
-    def __init__(self): pass # inject backend and uncache_key later
+    def __init__(self):
+        pass  # inject backend and uncache_key later
 
     def cached(self, cachekey):
         def decorator(fn):
             def wrapper(*args, **kwargs):  # kwargs is query string
                 ck = cachekey(args)
-                if "uncache_key" in kwargs and kwargs["uncache_key"] == self.uncache_key:
+                if "uncache_key" in kwargs and \
+                        kwargs["uncache_key"] == self.uncache_key:
                     self.backend.delete(ck)
                     content = None
                 else:

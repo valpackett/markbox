@@ -4,6 +4,9 @@ import cherrypy
 from time import mktime
 from datetime import datetime
 from parsedatetime.parsedatetime import Calendar
+from dropbox.session import DropboxSession
+from dropbox.client import DropboxClient
+
 
 def read_file(fname):
     try:
@@ -11,6 +14,7 @@ def read_file(fname):
             return f.read()
     except IOError:
         return None
+
 
 class Dropbox(object):
     cal = Calendar()
@@ -29,7 +33,8 @@ class Dropbox(object):
                 posts.append({
                     "path": f["path"][:-3],  # no extension, keep slash
                     "title": mdown.Meta["title"][0],  # wrapped in a list
-                    "date": datetime.fromtimestamp(mktime(self.cal.parse(mdown.Meta["date"][0])[0])),
+                    "date": datetime.fromtimestamp(
+                        mktime(self.cal.parse(mdown.Meta["date"][0])[0])),
                     "html": html
                 })
             else:
@@ -45,21 +50,20 @@ class Dropbox(object):
         return cont
 
     def connect(self, query):
-        sess = dropbox.session.DropboxSession(self.app_key,
-                self.app_secret, "app_folder")
+        sess = DropboxSession(self.app_key, self.app_secret, "app_folder")
         # Access token is saved to memcache and the filesystem
         s_token = self.cache.get("s_token") or read_file(".s_token")
-        s_token_secret = self.cache.get("s_token_secret") or read_file(".s_token_secret")
-        if s_token and s_token_secret:
-            sess.set_token(s_token, s_token_secret)
+        s_secret = self.cache.get("s_secret") or read_file(".s_secret")
+        if s_token and s_secret:
+            sess.set_token(s_token, s_secret)
         elif "oauth_token" in query:  # callback from Dropbox
-            s_token = sess.obtain_access_token(dropbox.session.OAuthToken(\
+            s_token = sess.obtain_access_token(dropbox.session.OAuthToken(
                 self.cache.get("r_token"), self.cache.get("r_token_secret")))
             self.cache.set("s_token", s_token.key)
-            self.cache.set("s_token_secret", s_token.secret)
+            self.cache.set("s_secret", s_token.secret)
             with open(".s_token", "w") as f:
                 f.write(s_token.key)
-            with open(".s_token_secret", "w") as f:
+            with open(".s_secret", "w") as f:
                 f.write(s_token.secret)
             self.cache.delete("r_token")
             self.cache.delete("r_token_secret")
@@ -69,7 +73,7 @@ class Dropbox(object):
             self.cache.set("r_token_secret", req_token.secret)
             url = sess.build_authorize_url(req_token, cherrypy.url())
             raise cherrypy.HTTPRedirect(url)
-        self.client = dropbox.client.DropboxClient(sess)
+        self.client = DropboxClient(sess)
 
     def connected(self, fn):
         def wrapper(*args, **kwargs):
@@ -87,4 +91,4 @@ class Dropbox(object):
     def error_html(self, e):
         import traceback
         return "<!DOCTYPE html><pre>Dropbox error: " + \
-                traceback.format_exc(e) + "</pre>"
+            traceback.format_exc(e) + "</pre>"
