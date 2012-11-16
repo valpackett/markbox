@@ -24,6 +24,7 @@ def get_markdown():
 
 class Markbox(object):
     cache = Cache()
+    dropbox = Dropbox()
 
     def __init__(self, public_folder="public", tpl_folder="templates",
             blog_title="Your New Markbox Blog", feed_name="articles",
@@ -51,13 +52,13 @@ class Markbox(object):
 
         if "DROPBOX_APP_KEY" in os.environ and \
                 "DROPBOX_APP_SECRET" in os.environ:
-            db_app_key = os.environ.get("DROPBOX_APP_KEY")
-            db_app_secret = os.environ.get("DROPBOX_APP_SECRET")
+            self.dropbox.app_key = os.environ.get("DROPBOX_APP_KEY")
+            self.dropbox.app_secret = os.environ.get("DROPBOX_APP_SECRET")
         else:
             cherrypy.log("""Dropbox credentials not found in the env.
             Set DROPBOX_APP_KEY and DROPBOX_APP_SECRET env variables!""")
-        self.dropbox = Dropbox(db_app_key, db_app_secret, self.cache,
-                get_markdown)
+        self.dropbox.cache = self.cache
+        self.dropbox.get_markdown = get_markdown
 
         self.cache.uncache_key = os.environ.get("UNCACHE_KEY")
         if not self.cache.uncache_key:
@@ -72,51 +73,39 @@ class Markbox(object):
     @cherrypy.expose
     @ctype("application/atom+xml; charset=utf-8")
     @cache.cached(lambda a: "feed")
+    @dropbox.connected
     def _feed(self, *args, **kwargs):
-        self.dropbox.connect(kwargs)
-        try:
-            host = cherrypy.request.base
-            atom = AtomFeed(title=self.blog_title, url=host,
-                    feed_url=cherrypy.url(),
-                    author=self.feed_author)
-            for post in self.dropbox.listing():
-                atom.add(title=post["title"],
-                        url=host+post["path"],
-                        author=self.feed_author,
-                        content_type="html",
-                        content=post["html"],
-                        updated=post["date"])
-            return atom.to_string()
-        except dropbox.rest.ErrorResponse, e:
-            return self.dropbox_error(e)
+        host = cherrypy.request.base
+        atom = AtomFeed(title=self.blog_title, url=host,
+                feed_url=cherrypy.url(),
+                author=self.feed_author)
+        for post in self.dropbox.listing():
+            atom.add(title=post["title"],
+                    url=host+post["path"],
+                    author=self.feed_author,
+                    content_type="html",
+                    content=post["html"],
+                    updated=post["date"])
+        return atom.to_string()
 
     @cherrypy.expose
     @cache.cached(lambda a: a[1])  # title from (self, title)
+    @dropbox.connected
     def default(self, title, **kwargs):
-        self.dropbox.connect(kwargs)
-        try:
-            src = self.dropbox.read_file(title + ".md")
-            mdown = get_markdown()
-            html = mdown.convert(src)
-            tpl_post = self.tpl.get_template("post.html")
-            return tpl_post.render(body=html,
-                    page_title=mdown.Meta["title"][0],
-                    date=mdown.Meta["date"][0])
-        except dropbox.rest.ErrorResponse, e:
-            if e.status == 404:
-                raise cherrypy.HTTPError(404, "File not found")
-            else:
-                return self.dropbox_error(e)
+        src = self.dropbox.read_file(title + ".md")
+        mdown = get_markdown()
+        html = mdown.convert(src)
+        tpl_post = self.tpl.get_template("post.html")
+        return tpl_post.render(body=html,
+                page_title=mdown.Meta["title"][0],
+                date=mdown.Meta["date"][0])
 
     @cherrypy.expose
     @cache.cached(lambda a: "index")
+    @dropbox.connected
     def index(self, *args, **kwargs):
-        self.dropbox.connect(kwargs)
-        try:
-            tpl_list = self.tpl.get_template("list.html")
-            return tpl_list.render(posts=self.dropbox.listing())
-        except dropbox.rest.ErrorResponse, e:
-            return self.dropbox_error(e)
+        tpl_list = self.tpl.get_template("list.html")
+        return tpl_list.render(posts=self.dropbox.listing())
 
     def run(self, host="0.0.0.0", port=8080):
         cherrypy.config.update({
@@ -129,8 +118,3 @@ class Markbox(object):
                 "tools.staticdir.dir": self.public_folder
             }
         })
-
-    def dropbox_error(self, e):
-        import traceback
-        return "<!DOCTYPE html><pre>Dropbox error: " + \
-                traceback.format_exc(e) + "</pre>"
