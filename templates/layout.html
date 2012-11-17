@@ -29,6 +29,11 @@
       ul { list-style: square; }
       small, aside { font-size: 0.75000em; }
       blockquote { border-left: 4px solid #CACACA; margin-left: 0; padding-left: 1.5em; }
+      html, body { height: 100%; }
+      #wrap { min-height: 100%; }
+      #main { padding-bottom: 50px; }
+      footer { position: relative; margin-top: -50px; height: 50px; clear: both; }
+      header, footer { text-align: center; }
       @media screen and (min-width: 640px) {
         body { width: 80%; margin: 0 auto; }
         ul, ol { list-style-position: outside; }
@@ -51,11 +56,14 @@
     </style>
   </head>
   <body>
-    <header>
-      <h1><a href="/">{{blog_title}}</a></h1>
-    </header>
-    <section id="main">
-      {% block main %}{% endblock %}
-    </section>
+    <div id="wrap">
+      <header>
+        <h1><a href="/">{{blog_title}}</a></h1>
+      </header>
+      <section id="main">
+        {% block main %}{% endblock %}
+      </section>
+    </div>
+    <footer>by {{author}}</footer>
   </body>
 </html>

@@ -36,13 +36,13 @@ class Markbox(object):
 
     def __init__(self, public_folder="public", tpl_folder="templates",
             blog_title="Your New Markbox Blog", feed_name="articles",
-            feed_author="Anonymous"):
+            author="Anonymous"):
         self.tpl = Environment(loader=FileSystemLoader([tpl_folder,
             here("../templates")]))
         self.tpl.globals["blog_title"] = self.blog_title = blog_title
         self.tpl.globals["feed_name"] = self.feed_name = feed_name
+        self.tpl.globals["author"] = self.author = author
         self.public_folder = public_folder
-        self.feed_author = feed_author
 
         # CherryPy routes by method name, here we set the method name
         setattr(self, feed_name + "_xml", self._feed)
@@ -85,11 +85,11 @@ class Markbox(object):
         host = cherrypy.request.base
         atom = AtomFeed(title=self.blog_title, url=host,
                 feed_url=cherrypy.url(),
-                author=self.feed_author)
+                author=self.author)
         for post in self.listing():
             atom.add(title=post["title"],
                     url=host + post["path"],
-                    author=self.feed_author,
+                    author=self.author,
                     content_type="html",
                     content=post["html"],
                     updated=post["date"])
