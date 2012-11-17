@@ -6,4 +6,8 @@
   <p>Posted on <time>{{date}}</time></p>
   {{body}}
 </article>
+<nav>
+  {% if prev_post %}<a href="{{prev_post.path}}" rel="prev">&larr; previous post</a>{% endif %}
+  {% if next_post %}<a href="{{next_post.path}}" rel="next">next post &rarr;</a>{% endif %}
+</nav>
 {% endblock %}

@@ -98,14 +98,24 @@ class Markbox(object):
     @cherrypy.expose
     @cache.cached(lambda a: a[1])  # title from (self, title)
     @dropbox.connected
-    def default(self, title, **kwargs):
-        src = self.dropbox.read_file(title + ".md")
+    def default(self, path, **kwargs):
+        listing = self.listing()
+        listing.reverse()
+        post_index = [p["path"] for p in listing].index("/" + path)
+        prev_post = next_post = None
+        if post_index > 0:
+            prev_post = listing[post_index - 1]
+        if post_index < len(listing) - 1:
+            next_post = listing[post_index + 1]
+        src = self.dropbox.read_file(path + ".md")
         mdown = get_markdown()
         html = mdown.convert(src)
         tpl_post = self.tpl.get_template("post.html")
         return tpl_post.render(body=html,
                 page_title=mdown.Meta["title"][0],
-                date=mdown.Meta["date"][0])
+                date=mdown.Meta["date"][0],
+                prev_post=prev_post,
+                next_post=next_post)
 
     @cherrypy.expose
     @cache.cached(lambda a: "index")
