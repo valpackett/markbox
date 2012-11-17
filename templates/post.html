@@ -3,7 +3,10 @@
 {% block main %}
 <article>
   <h1>{{page_title}}</h1>
-  <p>Posted on <time>{{date}}</time></p>
+  <p>
+    Posted on <time>{{date}}</time><br>
+    Reading time: {{reading_time}}
+  </p>
   {{body}}
 </article>
 <nav>

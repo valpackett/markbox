@@ -22,6 +22,14 @@ def ctype(ct):
     return decorator
 
 
+def reading_time(text):
+    words = len(text.split(" "))
+    minutes = words / 250
+    txt = "%s minutes, " % minutes if minutes > 0 else ""
+    txt += "%02d seconds" % round(float(words) % 250 / 250 * 60)
+    return txt
+
+
 def get_markdown():
     return markdown.Markdown(extensions=[
         "meta", "extra", "codehilite", "headerid(level=2)",
@@ -112,6 +120,7 @@ class Markbox(object):
         html = mdown.convert(src)
         tpl_post = self.tpl.get_template("post.html")
         return tpl_post.render(body=html,
+                reading_time=reading_time(src),
                 page_title=mdown.Meta["title"][0],
                 date=mdown.Meta["date"][0],
                 prev_post=prev_post,
