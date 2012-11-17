@@ -1,9 +1,6 @@
 from __future__ import absolute_import
 import dropbox
 import cherrypy
-from time import mktime
-from datetime import datetime
-from parsedatetime.parsedatetime import Calendar
 from dropbox.session import DropboxSession
 from dropbox.client import DropboxClient
 
@@ -17,31 +14,8 @@ def read_file(fname):
 
 
 class Dropbox(object):
-    cal = Calendar()
-
     def __init__(self):
         self.client = None
-
-    def listing(self):
-        files = self.client.search("/", ".md")
-        posts = []
-        for f in files:
-            cont = self.read_file(f["path"])
-            mdown = self.get_markdown()
-            html = mdown.convert(cont)
-            if "title" in mdown.Meta and "date" in mdown.Meta:
-                posts.append({
-                    "path": f["path"][:-3],  # no extension, keep slash
-                    "title": mdown.Meta["title"][0],  # wrapped in a list
-                    "date": datetime.fromtimestamp(
-                        mktime(self.cal.parse(mdown.Meta["date"][0])[0])),
-                    "html": html
-                })
-            else:
-                cherrypy.log("No title and/or date in file: " + f["path"])
-        posts = sorted(posts, key=lambda p: p["date"])
-        posts.reverse()
-        return posts
 
     def read_file(self, fname):
         r = self.client.get_file(fname)

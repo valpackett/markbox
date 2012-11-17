@@ -4,6 +4,9 @@ import markdown
 import cherrypy
 from jinja2 import Environment, FileSystemLoader
 from pyatom import AtomFeed
+from time import mktime
+from datetime import datetime
+from parsedatetime.parsedatetime import Calendar
 from .cache import Cache
 from .dropbox import Dropbox
 
@@ -29,6 +32,7 @@ def get_markdown():
 class Markbox(object):
     cache = Cache()
     dropbox = Dropbox()
+    cal = Calendar()
 
     def __init__(self, public_folder="public", tpl_folder="templates",
             blog_title="Your New Markbox Blog", feed_name="articles",
@@ -62,7 +66,6 @@ class Markbox(object):
             cherrypy.log("""Dropbox credentials not found in the env.
             Set DROPBOX_APP_KEY and DROPBOX_APP_SECRET env variables!""")
         self.dropbox.cache = self.cache
-        self.dropbox.get_markdown = get_markdown
 
         self.cache.uncache_key = os.environ.get("UNCACHE_KEY")
         if not self.cache.uncache_key:
@@ -83,7 +86,7 @@ class Markbox(object):
         atom = AtomFeed(title=self.blog_title, url=host,
                 feed_url=cherrypy.url(),
                 author=self.feed_author)
-        for post in self.dropbox.listing():
+        for post in self.listing():
             atom.add(title=post["title"],
                     url=host + post["path"],
                     author=self.feed_author,
@@ -109,7 +112,7 @@ class Markbox(object):
     @dropbox.connected
     def index(self, *args, **kwargs):
         tpl_list = self.tpl.get_template("list.html")
-        return tpl_list.render(posts=self.dropbox.listing())
+        return tpl_list.render(posts=self.listing())
 
     def run(self, host="0.0.0.0", port=8080):
         cherrypy.config.update({
@@ -122,3 +125,24 @@ class Markbox(object):
                 "tools.staticdir.dir": self.public_folder
             }
         })
+
+    def listing(self):
+        files = self.dropbox.client.search("/", ".md")
+        posts = []
+        for f in files:
+            cont = self.dropbox.read_file(f["path"])
+            mdown = get_markdown()
+            html = mdown.convert(cont)
+            if "title" in mdown.Meta and "date" in mdown.Meta:
+                posts.append({
+                    "path": f["path"][:-3],  # no extension, keep slash
+                    "title": mdown.Meta["title"][0],  # wrapped in a list
+                    "date": datetime.fromtimestamp(
+                        mktime(self.cal.parse(mdown.Meta["date"][0])[0])),
+                    "html": html
+                })
+            else:
+                cherrypy.log("No title and/or date in file: " + f["path"])
+        posts = sorted(posts, key=lambda p: p["date"])
+        posts.reverse()
+        return posts
