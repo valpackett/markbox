@@ -39,7 +39,7 @@ from markbox import Markbox, here
 
 m = Markbox(
     blog_title="Some Kind of Blog",
-    feed_author="Greg"
+    author="Greg"
 )
 
 m.run(port=int(os.environ.get("PORT")))
