@@ -4,9 +4,7 @@ import markdown
 import cherrypy
 from jinja2 import Environment, FileSystemLoader
 from pyatom import AtomFeed
-from time import mktime
-from datetime import datetime
-from parsedatetime.parsedatetime import Calendar
+from dateutil.parser import parse as parsedate
 from .cache import Cache
 from .dropbox import Dropbox
 
@@ -40,7 +38,6 @@ def get_markdown():
 class Markbox(object):
     cache = Cache()
     dropbox = Dropbox()
-    cal = Calendar()
 
     def __init__(self, public_folder="public", tpl_folder="templates",
             blog_title="Your New Markbox Blog", feed_name="articles",
@@ -156,8 +153,7 @@ class Markbox(object):
                 posts.append({
                     "path": f["path"][:-3],  # no extension, keep slash
                     "title": mdown.Meta["title"][0],  # wrapped in a list
-                    "date": datetime.fromtimestamp(
-                        mktime(self.cal.parse(mdown.Meta["date"][0])[0])),
+                    "date": parsedate(mdown.Meta["date"][0]),
                     "html": html
                 })
             else:

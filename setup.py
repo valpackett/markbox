@@ -14,7 +14,7 @@ setup(name="markbox",
       author_email="floatboth@me.com",
       url="https://github.com/myfreeweb/markbox",
       install_requires=["pylibmc", "mockcache", "Jinja2", "dropbox", "markdown",
-          "pygments", "cherrypy", "parsedatetime", "mdx_smartypants", "pyatom"],
+          "pygments", "cherrypy", "python-dateutil", "mdx_smartypants", "pyatom"],
       packages=["templates", "markbox"],
       keywords=["web", "http", "dropbox", "markdown", "blog"],
       classifiers=[

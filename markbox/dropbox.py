@@ -21,7 +21,7 @@ class Dropbox(object):
         r = self.client.get_file(fname)
         cont = r.read()
         r.close()
-        return cont
+        return cont.decode("utf-8")
 
     def connect(self, query):
         sess = DropboxSession(self.app_key, self.app_secret, "app_folder")
