@@ -8,13 +8,15 @@ class Cache(object):
     def __init__(self):
         pass  # inject backend and uncache_key later
 
-    def cached(self, cachekey):
+    def cached(self, cachekey, dep_cachekeys=[]):
         def decorator(fn):
             def wrapper(*args, **kwargs):  # kwargs is query string
                 ck = cachekey(args)
                 if "uncache_key" in kwargs and \
                         kwargs["uncache_key"] == self.uncache_key:
                     self.backend.delete(ck)
+                    for ck in dep_cachekeys:
+                        self.backend.delete(ck)
                     content = None
                 else:
                     content = self.backend.get(ck)

@@ -93,7 +93,7 @@ class Markbox(object):
 
     @cherrypy.expose
     @ctype("application/atom+xml; charset=utf-8")
-    @cache.cached(lambda a: "feed")
+    @cache.cached(lambda a: "feed", ["listing"])
     @dropbox.connected
     def _feed(self, *args, **kwargs):
         host = cherrypy.request.base
@@ -110,7 +110,7 @@ class Markbox(object):
         return atom.to_string()
 
     @cherrypy.expose
-    @cache.cached(lambda a: a[1])  # title from (self, title)
+    @cache.cached(lambda a: a[1], ["listing"])  # title from (self, title)
     @dropbox.connected
     def default(self, path, **kwargs):
         listing = self.listing()
@@ -136,7 +136,7 @@ class Markbox(object):
                 next_post=next_post)
 
     @cherrypy.expose
-    @cache.cached(lambda a: "index")
+    @cache.cached(lambda a: "index", ["listing"])
     @dropbox.connected
     def index(self, *args, **kwargs):
         tpl_list = self.tpl.get_template("list.html")
@@ -161,6 +161,7 @@ class Markbox(object):
             }
         })
 
+    @cache.cached(lambda a: "listing")
     def listing(self):
         files = self.dropbox.client.search("/", ".md")
         posts = []
