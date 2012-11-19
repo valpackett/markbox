@@ -49,7 +49,7 @@ class Markbox(object):
 
     def __init__(self, public_folder="public", tpl_folder="templates",
             blog_title="Your New Markbox Blog", feed_name="articles",
-            author="Anonymous"):
+            author="Anonymous", bare_files=[]):
         self.tpl = Environment(loader=FileSystemLoader([tpl_folder,
             here("../templates")]))
         self.tpl.globals["blog_title"] = self.blog_title = blog_title
@@ -57,6 +57,7 @@ class Markbox(object):
         self.tpl.globals["author"] = self.author = author
         self.tpl.globals["public_url"] = self.public_url
         self.public_folder = public_folder
+        self.bare_files = bare_files
 
         # CherryPy routes by method name, here we set the method name
         setattr(self, feed_name + "_xml", self._feed)
@@ -144,17 +145,18 @@ class Markbox(object):
             "server.socket_host": host,
             "server.socket_port": port
         })
-        cherrypy.quickstart(self, "/", {
+        conf = {
             "/" + os.path.basename(self.public_folder): {
                 "tools.staticdir.on": True,
                 "tools.staticdir.dir": self.public_folder
-            },
-            "/humans.txt": {
-                "tools.staticfile.on": True,
-                "tools.staticfile.filename": os.path.join(self.public_folder,
-                    "humans.txt")
             }
-        })
+        }
+        for f in ["humans.txt", "favicon.ico", "robots.txt"] + self.bare_files:
+            conf["/" + f] = {
+                "tools.staticfile.on": True,
+                "tools.staticfile.filename": os.path.join(self.public_folder, f)
+            }
+        cherrypy.quickstart(self, "/", conf)
 
     @cache.cached(lambda a: "listing")
     def listing(self):
