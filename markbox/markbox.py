@@ -112,7 +112,7 @@ class Markbox(object):
     @cherrypy.expose
     @cache.cached(lambda a: a[1])  # title from (self, title)
     @dropbox.connected
-    def default(self, path, *args, **kwargs):
+    def default(self, path, **kwargs):
         listing = self.listing()
         listing.reverse()
         url_listing = [p["path"] for p in listing]
