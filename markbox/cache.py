@@ -14,9 +14,7 @@ class Cache(object):
                 ck = cachekey(args)
                 if "uncache_key" in kwargs and \
                         kwargs["uncache_key"] == self.uncache_key:
-                    self.backend.delete(ck)
-                    for ck in dep_cachekeys:
-                        self.backend.delete(ck)
+                    self.backend.delete_multi(dep_cachekeys + [ck])
                     content = None
                 else:
                     content = self.backend.get(ck)
