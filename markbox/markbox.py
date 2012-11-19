@@ -142,7 +142,9 @@ class Markbox(object):
         tpl_list = self.tpl.get_template("list.html")
         return tpl_list.render(posts=self.listing())
 
-    def run(self, host="0.0.0.0", port=8080):
+    def run(self, host="0.0.0.0", port=8080, production=False):
+        if production:
+            cherrypy.config.update({"environment": "production"})
         cherrypy.config.update({
             "server.socket_host": host,
             "server.socket_port": port
