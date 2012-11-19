@@ -114,10 +114,11 @@ class Markbox(object):
     @dropbox.connected
     def default(self, path, *args, **kwargs):
         listing = self.listing()
-        if not "/" + path in listing:
-            raise cherrypy.HTTPError(404, "File not found")
         listing.reverse()
-        post_index = [p["path"] for p in listing].index("/" + path)
+        url_listing = [p["path"] for p in listing]
+        if not "/" + path in url_listing:
+            raise cherrypy.HTTPError(404, "File not found")
+        post_index = url_listing.index("/" + path)
         prev_post = next_post = None
         if post_index > 0:
             prev_post = listing[post_index - 1]
