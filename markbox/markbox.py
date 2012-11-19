@@ -65,9 +65,10 @@ class Markbox(object):
             import pylibmc
             self.cache.backend = pylibmc.Client(
                 servers=[os.environ.get("MEMCACHE_SERVERS")],
-                username=os.environ.get("MEMCACHE_USERNAME"),
-                password=os.environ.get("MEMCACHE_PASSWORD"),
+                username=os.environ.get("MEMCACHE_USERNAME", None),
+                password=os.environ.get("MEMCACHE_PASSWORD", None),
                 binary=True)
+            self.cache.use_pooling()
         else:
             import mockcache
             self.cache.backend = mockcache.Client()
