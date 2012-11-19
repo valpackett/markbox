@@ -3,6 +3,7 @@ from __future__ import absolute_import
 import os
 import markdown
 import cherrypy
+from zlib import crc32
 from pyatom import AtomFeed
 from jinja2 import Environment, FileSystemLoader
 from dateutil.parser import parse as parsedate
@@ -40,6 +41,12 @@ class Markbox(object):
     cache = Cache()
     dropbox = Dropbox()
 
+    def public_url(self, url):
+        with open(os.path.join(self.public_folder, url)) as f:
+            return "/%s?v=%s" % (
+                    os.path.join(os.path.basename(self.public_folder), url),
+                    crc32(f.read()))
+
     def __init__(self, public_folder="public", tpl_folder="templates",
             blog_title="Your New Markbox Blog", feed_name="articles",
             author="Anonymous"):
@@ -48,6 +55,7 @@ class Markbox(object):
         self.tpl.globals["blog_title"] = self.blog_title = blog_title
         self.tpl.globals["feed_name"] = self.feed_name = feed_name
         self.tpl.globals["author"] = self.author = author
+        self.tpl.globals["public_url"] = self.public_url
         self.public_folder = public_folder
 
         # CherryPy routes by method name, here we set the method name
