@@ -1,19 +1,20 @@
 # Markbox
 
-A blog engine based on Markdown and Dropbox.
-Designed for Heroku, but works on any server.
-Like one of [these](http://calepin.co/), but not as-a-Service.
-Hackable.
-Just a little more than 200 lines of Python.
+Super simple Heroku-ready, Markdown- and Dropbox-based customizable blog engine.
+Like [this](http://calepin.co/), but not as-a-Service.
 Based on [CherryPy](http://www.cherrypy.org/).
+Runs [my website](http://floatboth.com/).
 
 Pretty opinionated:
 
 - only [Jinja2](http://jinja.pocoo.org/docs/templates/) for templates
-- only Redis for caching
-- only Atom for feed
-- only Dropbox for storage
-- only Markdown with [SmartyPants](https://bitbucket.org/jeunice/mdx_smartypants), [Pygments](http://packages.python.org/Markdown/extensions/code_hilite.html), [extras](http://packages.python.org/Markdown/extensions/extra.html) (tables, footnotes, etc.) for rendering
+- only [Redis](http://redis.io) for caching
+- only [Atom](http://en.wikipedia.org/wiki/Atom_(standard)) for the feed
+- only [Dropbox](http://dropbox.com) for storage
+- only [Markdown](http://daringfireball.net/projects/markdown/) with [SmartyPants](https://bitbucket.org/jeunice/mdx_smartypants), [Pygments](http://packages.python.org/Markdown/extensions/code_hilite.html), [extras](http://packages.python.org/Markdown/extensions/extra.html) (tables, footnotes, etc.) for rendering
+
+But you can replace these parts with subclassing or monkey-patching.
+Or just forking the whole thing if you want to use Simplenote, Mako, Memcached, RSS and Textile instead of my configuration.
 
 ## Quick Start
 
