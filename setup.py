@@ -7,7 +7,7 @@ if sys.version < "2.5":
 
 setup(
     name="markbox",
-    version="0.1.4",
+    version="0.1.5",
     description="A blogging engine for Dropbox based on Markdown",
     # long_description="""""",
     license="Apache License 2.0",
@@ -15,7 +15,7 @@ setup(
     author_email="floatboth@me.com",
     url="https://github.com/myfreeweb/markbox",
     install_requires=[
-        "pylibmc", "mockcache", "Jinja2", "dropbox", "markdown", "pygments",
+        "redis", "Jinja2", "dropbox", "markdown", "pygments",
         "cherrypy", "python-dateutil", "mdx_smartypants", "pyatom"
     ],
     packages=["templates", "markbox"],

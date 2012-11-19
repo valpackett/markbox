@@ -9,7 +9,7 @@ Based on [CherryPy](http://www.cherrypy.org/).
 
 Pretty opinionated:
 - only [Jinja2](http://jinja.pocoo.org/docs/templates/) templates
-- only Memcache for caching
+- only Redis for caching
 - only Atom feed
 - only Dropbox
 - only Markdown with [SmartyPants](https://bitbucket.org/jeunice/mdx_smartypants), [Pygments](http://packages.python.org/Markdown/extensions/code_hilite.html), [extras](http://packages.python.org/Markdown/extensions/extra.html) (tables, footnotes, etc.)
@@ -27,10 +27,8 @@ web: python run.py
 
 requirements.txt:
 ```bash
-pylibmc
 git+git://github.com/myfreeweb/markbox.git@master
 ```
-(note: you have to explicitly specify pylibmc for the Heroku bulidpack to build libmemcached)
 
 run.py:
 ```python
@@ -49,7 +47,7 @@ Now, deploy to Heroku with the app name you want, your Dropbox credentials and a
 ```bash
 heroku create NAME
 heroku config:set DROPBOX_APP_KEY=key DROPBOX_APP_SECRET=secret UNCACHE_KEY=uncache_key
-heroku addons:add memcache
+heroku addons:add redistogo
 git push heroku master
 ```
 

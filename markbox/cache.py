@@ -1,17 +1,16 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
+try:
+    import cPickle as pickle
+except ImportError:
+    import pickle
 
 
 class Cache(object):
     "Wrapper around a memcache object with a decorator for caching handlers"
 
     def __init__(self):
-        self.pool = None
-        # inject backend and uncache_key later
-
-    def use_pooling(self):
-        import pylibmc
-        self.pool = pylibmc.ClientPool(self.backend, 20)
+        pass # inject backend and uncache_key later
 
     def cached(self, cachekey, dep_cachekeys=[]):
         def decorator(fn):
@@ -19,7 +18,9 @@ class Cache(object):
                 ck = cachekey(args)
                 if "uncache_key" in kwargs and \
                         kwargs["uncache_key"] == self.uncache_key:
-                    self.delete_multi(dep_cachekeys + [ck])
+                    self.delete(ck)
+                    for ck in dep_cachekeys:
+                        self.delete(ck)
                     content = None
                 else:
                     content = self.get(ck)
@@ -30,8 +31,28 @@ class Cache(object):
             return wrapper
         return decorator
 
+    def get(self, key):
+        l = self.backend.get(key)
+        if l:
+            return pickle.loads(l)
+
+    def set(self, key, val):
+        return self.backend.set(key, pickle.dumps(val))
+
     def __getattr__(self, name):
-        if self.pool:
-            with self.pool.reserve() as mc:
-                return getattr(mc, name)
         return getattr(self.backend, name)
+
+
+class NoCache(object):
+
+    def __init__(self):
+        pass
+
+    def get(self, key):
+        pass
+
+    def delete(self, key):
+        pass
+
+    def set(self, key, value):
+        pass

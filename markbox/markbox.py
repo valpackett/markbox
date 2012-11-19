@@ -7,7 +7,7 @@ from zlib import crc32
 from pyatom import AtomFeed
 from jinja2 import Environment, FileSystemLoader
 from dateutil.parser import parse as parsedate
-from .cache import Cache
+from .cache import Cache, NoCache
 from .dropbox import Dropbox
 
 here = lambda a: os.path.join(os.path.dirname(__file__), a)
@@ -61,17 +61,11 @@ class Markbox(object):
         # CherryPy routes by method name, here we set the method name
         setattr(self, feed_name + "_xml", self._feed)
 
-        if "MEMCACHE_SERVERS" in os.environ:
-            import pylibmc
-            self.cache.backend = pylibmc.Client(
-                servers=[os.environ.get("MEMCACHE_SERVERS")],
-                username=os.environ.get("MEMCACHE_USERNAME", None),
-                password=os.environ.get("MEMCACHE_PASSWORD", None),
-                binary=True)
-            self.cache.use_pooling()
+        if "REDISTOGO_URL" in os.environ:
+            import redis
+            self.cache.backend = redis.from_url(os.getenv("REDISTOGO_URL"))
         else:
-            import mockcache
-            self.cache.backend = mockcache.Client()
+            self.cache.backend = NoCache()
 
         if "DROPBOX_APP_KEY" in os.environ and \
                 "DROPBOX_APP_SECRET" in os.environ:
