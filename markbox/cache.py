@@ -11,7 +11,7 @@ class Cache(object):
 
     def use_pooling(self):
         import pylibmc
-        self.pool = pylibmc.ClientPool(self.backend, 11)
+        self.pool = pylibmc.ClientPool(self.backend, 20)
 
     def cached(self, cachekey, dep_cachekeys=[]):
         def decorator(fn):
