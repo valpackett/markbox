@@ -9,7 +9,7 @@ Pretty opinionated:
 
 - only [Jinja2](http://jinja.pocoo.org/docs/templates/) for templates
 - only [Redis](http://redis.io) for caching
-- only [Atom](http://en.wikipedia.org/wiki/Atom_(standard)) for the feed
+- only [Atom](http://en.wikipedia.org/wiki/Atom_\(standard\)) for the feed
 - only [Dropbox](http://dropbox.com) for storage
 - only [Markdown](http://daringfireball.net/projects/markdown/) with [SmartyPants](https://bitbucket.org/jeunice/mdx_smartypants), [Pygments](http://packages.python.org/Markdown/extensions/code_hilite.html), [extras](http://packages.python.org/Markdown/extensions/extra.html) (tables, footnotes, etc.) for rendering
 
