@@ -7,7 +7,7 @@ if sys.version < "2.5":
 
 setup(
     name="markbox",
-    version="0.1.2",
+    version="0.1.3",
     description="A blogging engine for Dropbox based on Markdown",
     # long_description="""""",
     license="Apache License 2.0",
