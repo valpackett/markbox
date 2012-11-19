@@ -1,8 +1,11 @@
+# -*- coding: utf-8 -*-
 from __future__ import absolute_import
+from __future__ import with_statement
 import dropbox
 import cherrypy
-from dropbox.session import DropboxSession
+from contextlib import closing
 from dropbox.client import DropboxClient
+from dropbox.session import DropboxSession
 
 
 def read_file(fname):
@@ -18,10 +21,8 @@ class Dropbox(object):
         self.client = None
 
     def read_file(self, fname):
-        r = self.client.get_file(fname)
-        cont = r.read()
-        r.close()
-        return cont.decode("utf-8")
+        with closing(self.client.get_file(fname)) as r:
+            return r.read().decode("utf-8")
 
     def connect(self, query):
         sess = DropboxSession(self.app_key, self.app_secret, "app_folder")

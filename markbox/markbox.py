@@ -1,9 +1,10 @@
+# -*- coding: utf-8 -*-
 from __future__ import absolute_import
 import os
 import markdown
 import cherrypy
-from jinja2 import Environment, FileSystemLoader
 from pyatom import AtomFeed
+from jinja2 import Environment, FileSystemLoader
 from dateutil.parser import parse as parsedate
 from .cache import Cache
 from .dropbox import Dropbox
@@ -103,7 +104,7 @@ class Markbox(object):
     @cherrypy.expose
     @cache.cached(lambda a: a[1])  # title from (self, title)
     @dropbox.connected
-    def default(self, path, **kwargs):
+    def default(self, path, *args, **kwargs):
         listing = self.listing()
         listing.reverse()
         post_index = [p["path"] for p in listing].index("/" + path)
