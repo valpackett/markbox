@@ -9,6 +9,12 @@ from jinja2 import Environment, FileSystemLoader
 from dateutil.parser import parse as parsedate
 from .cache import Cache, NoCache
 from .dropbox import Dropbox
+from cherrypy.process import servers
+
+def fake_wait_for_occupied_port(host, port):
+    return
+
+servers.wait_for_occupied_port = fake_wait_for_occupied_port
 
 here = lambda a: os.path.join(os.path.dirname(__file__), a)
 
