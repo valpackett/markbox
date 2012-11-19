@@ -26,7 +26,7 @@ class Cache(object):
                     content = self.get(ck)
                 if not content:
                     content = fn(*args, **kwargs)
-                self.set(ck, content)
+                    self.set(ck, content)
                 return content
             return wrapper
         return decorator
