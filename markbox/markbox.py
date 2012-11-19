@@ -151,6 +151,11 @@ class Markbox(object):
             "/" + os.path.basename(self.public_folder): {
                 "tools.staticdir.on": True,
                 "tools.staticdir.dir": self.public_folder
+            },
+            "/humans.txt": {
+                "tools.staticfile.on": True,
+                "tools.staticfile.filename": os.path.join(self.public_folder,
+                    "humans.txt")
             }
         })
 
