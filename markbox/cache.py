@@ -7,7 +7,7 @@ except ImportError:
 
 
 class Cache(object):
-    "Wrapper around a memcache object with a decorator for caching handlers"
+    "Wrapper around a Redis-like object with a decorator for caching handlers"
 
     def __init__(self):
         pass # inject backend and uncache_key later

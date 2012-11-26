@@ -116,6 +116,9 @@ class Markbox(object):
     @dropbox.connected
     def default(self, path, **kwargs):
         listing = self.listing()
+        if type(listing) != list:  # cache is corrupt
+            self.cache.delete("listing")
+            listing = self.listing()
         listing.reverse()
         url_listing = [p["path"] for p in listing]
         if not "/" + path in url_listing:
