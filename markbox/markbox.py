@@ -136,7 +136,7 @@ class Markbox(object):
         return tpl_post.render(body=html,
                 reading_time=reading_time(src),
                 page_title=mdown.Meta["title"][0],
-                date=mdown.Meta["date"][0],
+                date=parsedate(mdown.Meta["date"][0]),
                 prev_post=prev_post,
                 next_post=next_post)
 

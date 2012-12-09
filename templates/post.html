@@ -4,7 +4,7 @@
 <article>
   <h1>{{page_title}}</h1>
   <p>
-    Posted on <time>{{date}}</time><br>
+    Posted on <time>{{date.strftime("%B %d, %Y")}}</time><br>
     Reading time: {{reading_time}}
   </p>
   {{body}}
