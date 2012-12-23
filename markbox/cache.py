@@ -41,8 +41,8 @@ class Cache(object):
 
     def clear(self):
         keys = self.keys()
-        keys.delete("s_token")
-        keys.delete("s_secret")
+        keys.remove("s_token")
+        keys.remove("s_secret")
         return [self.delete(k) for k in keys]
 
     def __getattr__(self, name):
