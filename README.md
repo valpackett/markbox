@@ -71,6 +71,8 @@ After adding a post, you need to clean the cache of the index page and the feed.
 
 So, if you saved your post to `Dropbox/Apps/(Blog folder name)/my-first-post.md`, checked that it's correct (and cached it) by visiting `blog-url.tld/my-first-post`, you can make it visible on the index page and the feed by visiting `blog-url.tld/?uncache_key=KEY` and `blog-url.tld/articles.xml?uncache_key=KEY`.
 
+To completely clear the cache (eg. when you update the design or there's an error), visit `blog-url.tld/clearcache?uncache_key=KEY`
+
 ## Customization
 
 This is an example of a highly-customized `run.py` (by the way, you can change the name "run.py" to anything you want, just make sure it's correctly referenced in the Procfile):

@@ -39,6 +39,12 @@ class Cache(object):
     def set(self, key, val):
         return self.backend.set(key, pickle.dumps(val))
 
+    def clear(self):
+        keys = self.keys()
+        keys.delete("s_token")
+        keys.delete("s_secret")
+        return [self.delete(k) for k in keys]
+
     def __getattr__(self, name):
         return getattr(self.backend, name)
 
@@ -52,6 +58,9 @@ class NoCache(object):
         pass
 
     def delete(self, key):
+        pass
+
+    def clear(self):
         pass
 
     def set(self, key, value):

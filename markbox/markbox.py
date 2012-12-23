@@ -187,3 +187,9 @@ class Markbox(object):
         posts = sorted(posts, key=lambda p: p["date"])
         posts.reverse()
         return posts
+
+    @cherrypy.expose
+    def clearcache(self, *args, **kwargs):
+        if "uncache_key" in kwargs and \
+                kwargs["uncache_key"] == self.uncache_key:
+            self.cache.clear()
