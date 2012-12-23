@@ -191,5 +191,5 @@ class Markbox(object):
     @cherrypy.expose
     def clearcache(self, *args, **kwargs):
         if "uncache_key" in kwargs and \
-                kwargs["uncache_key"] == self.uncache_key:
+                kwargs["uncache_key"] == self.cache.uncache_key:
             self.cache.clear()
